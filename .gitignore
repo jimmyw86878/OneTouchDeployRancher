@@ -1,0 +1,5 @@
+/images/*.tar
+/images/*.tar.gz
+/scripts/cluster_id
+/scripts/token
+/scripts/worker_command

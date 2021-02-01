@@ -1,0 +1,189 @@
+#!/bin/bash
+set -e
+
+cluster_name="k8s-cluster"
+master_ip="127.0.0.1"
+k8s_version="v1.19.6"
+rancher_version="v2.5.5"
+cni="flannel"
+registry_port="5000"
+registry="$master_ip:$registry_port"
+rancher_server_port="8443"
+rancher_server="$master_ip:$rancher_server_port"
+rancher_admin_password="123456"
+declare -a cni_list=("flannel" "canal" "calico" "weave")
+COLOR_REST='\e[0m'
+COLOR_GREEN='\e[0;32m';
+COLOR_RED='\e[0;31m';
+
+check_cni_list()
+{
+    if [[ " ${cni_list[*]} " == *" $cni "* ]]; then
+        echo "You chose $cni as cni plugin."
+    else
+        echo "Please choose an legal cni plugin in following list:"
+        echo "${cni_list[*]}"
+        exit 1
+    fi
+}
+
+#main function
+function usage {
+    cat <<EOF
+Usage: $0  [options] -- COMMAND
+
+Options:
+    --cluster-name      The name of cluster(default: k8s-cluster)
+    --master-ip         K8S master ip(default:127.0.0.1)
+    --k8s-version       Version of K8S(default: v1.19.6)
+    --rancher-version   Version of Rancher(default: v2.5.5)
+    --cni               Container Network Interface(default: flannel)
+
+Commands:
+    deploy-master       To deploy master node for Rancher server and K8S control plane
+    worker-command      To deploy worker node for K8S 
+    show-cni            To list available cni plugins
+    deploy-registry     To deploy private registry on master, input for master IP
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    (--cluster-name)
+        cluster_name=$2
+        shift 2
+        ;;
+    (--master-ip)
+        master_ip=$2
+        registry="$2:5000"
+        rancher_server="$2:$rancher_server_port"
+        shift 2
+        ;;
+    (--k8s-version)
+        k8s_version=$2
+        shift 2
+        ;;
+    (--rancher-version)
+        rancher_version=$2
+        shift 2
+        ;;
+    (--cni)
+        cni=$2
+        shift 2
+        ;;
+    (--)
+        shift
+        break
+        ;;
+    (*)
+        usage
+        exit 3
+        ;;
+esac
+done
+
+case "$1" in
+
+(deploy-master)
+        echo deploy-master
+        check_cni_list
+        rm -f token
+        rm -f cluster_id
+        rm -f worker_command
+        rm -f ~/.kube/config
+        docker run -d --restart=unless-stopped  --privileged  -p 8080:80 -p $rancher_server_port:443 "$registry"/rancher/rancher:"$rancher_version"
+        while ! curl -s -k https://$rancher_server/; do echo "Waiting for Rancher server ready...";sleep 10; done
+        LOGINRESPONSE=`curl -s 'https://'$rancher_server'/v3-public/localProviders/local?action=login' -H 'content-type: application/json' --data-binary '{"username":"admin","password":"admin"}' --insecure`
+        LOGINTOKEN=`echo $LOGINRESPONSE | jq -r .token`
+        # Change password
+        curl -s 'https://'$rancher_server'/v3/users?action=changepassword' -H 'content-type: application/json' -H "Authorization: Bearer $LOGINTOKEN" --data-binary '{"currentPassword":"admin","newPassword":"'$rancher_admin_password'"}' --insecure
+        # Create API key
+        APIRESPONSE=`curl -s 'https://'$rancher_server'/v3/token' -H 'content-type: application/json' -H "Authorization: Bearer $LOGINTOKEN" --data-binary '{"type":"token","description":"faca"}' --insecure`
+        # Extract and store token
+        APITOKEN=`echo $APIRESPONSE | jq -r .token`
+        # Store token for future usage
+        echo $APITOKEN > token
+        # Set server-url
+        curl -s 'https://'$rancher_server'/v3/settings/server-url' -H 'content-type: application/json' -H "Authorization: Bearer $APITOKEN" -X PUT --data-binary '{"name":"server-url","value":"https://'$rancher_server'"}' --insecure > /dev/null
+        echo "sleep 10 seconds for booting up Rancher"
+        sleep 10
+        # Create cluster information
+        jq --arg a "$cluster_name" '.name = $a' cluster.json > "tmp" && mv "tmp" cluster.json
+        jq --arg a "$registry" '.rancherKubernetesEngineConfig.privateRegistries[0].url = $a' cluster.json > "tmp" && mv "tmp" cluster.json
+        jq --arg a "$cni" '.rancherKubernetesEngineConfig.network.plugin = $a' cluster.json > "tmp" && mv "tmp" cluster.json
+        # Create cluster
+        CLUSTERRESPONSE=`curl -s 'https://'$rancher_server'/v3/cluster' -H 'content-type: application/json' -H "Authorization: Bearer $APITOKEN" --data @cluster.json --insecure`
+        # Extract clusterid to use for generating the docker run command
+        CLUSTERID=`echo $CLUSTERRESPONSE | jq -r .id`
+        echo $CLUSTERID > cluster_id
+        # Create token
+        curl -s 'https://'$rancher_server'/v3/clusterregistrationtoken' -H 'content-type: application/json' -H "Authorization: Bearer $APITOKEN" --data-binary '{"type":"clusterRegistrationToken","clusterId":"'$CLUSTERID'"}' --insecure > /dev/null
+        # Set role flags
+        ROLEFLAGS="--etcd --controlplane --worker"
+        # Generate nodecommand
+        AGENTCMD=`curl -s 'https://'$rancher_server'/v3/clusterregistrationtoken?id="'$CLUSTERID'"' -H 'content-type: application/json' -H "Authorization: Bearer $APITOKEN" --insecure | jq -r '.data[].nodeCommand' | head -1`
+        # Concat commands
+        DOCKERRUNCMD="$AGENTCMD $ROLEFLAGS"
+        # Echo command
+        echo $DOCKERRUNCMD
+        eval $DOCKERRUNCMD
+        # Check the cluster is ready
+        for i in {1..30};
+        do 
+            set +e
+            status=`curl -s -X GET -k -H "Authorization:Bearer $APITOKEN" https://$rancher_server/k8s/clusters/$CLUSTERID/healthz | head -1`
+            set -e
+            echo "K8S status: $status"
+            if [ "$status" != "ok" ]; then
+                echo "Sleep 60 seconds to wait for K8S clsuter ready..."
+                sleep 60
+            else
+                echo "K8S cluster is ready to go."
+                break
+            fi
+            if (( $i > 29 )); then
+                echo -e "\n${COLOR_RED}Failed to deploy K8S master, please check error on Rancher UI.${COLOR_REST}"
+                exit 1
+            fi
+        done
+        echo "Almost done..., sleep 60 seconds to complete the deployment."
+        sleep 60 
+        # Create kubectl config in ~/.kube/config
+        mkdir -p ~/.kube
+        curl -s -k -X POST -H 'Accept: application/json' -H 'Content-Type: application/json' -H 'Authorization:Bearer '$APITOKEN'' 'https://'$rancher_server'/v3/clusters/'$CLUSTERID'?action=generateKubeconfig' | jq -r .config > ~/.kube/config
+        # Store worker command for future usage
+        echo "$AGENTCMD --worker" > worker_command
+        echo -e "\n${COLOR_GREEN}K8S cluster $CLUSTERID has been successfully deployed. You can add worker node to this cluster now.${COLOR_REST}"
+        ;;
+(worker-command)
+        if [ ! -f worker_command ]; then
+            echo "Please install master node to get worker command."
+            exit 1
+        fi
+        echo "Copy below command to worker node and execute it, and you can check it out on Rancher UI"
+        cat worker_command
+        ;;
+(show-cni)
+        echo "Avaliable cni list:"
+        for i in ${cni_list[@]}
+        do
+            echo "$i"
+        done
+        ;;
+(deploy-registry)
+        echo "Deploy registry"
+        docker load -i ../images/registry2.7.tar
+        docker run -d -p $registry_port:5000 --restart=always --name registry registry:2.7
+        echo "Load rancher images and push into registry"
+        ./rancher-load-images.sh --image-list ../images/rancher-images.txt --images ../images/rancher-images.tar.gz  --registry $registry
+        echo "Delete loaded images, ignore error if image is in used"
+        set +e
+        docker rmi -f $(docker images -q)
+        set -e
+        echo "Registry is good to go. Ignore error message like: \"No such image: XXX\" or \"image is being used ...\""
+        ;;
+(*)     usage
+        exit 0
+        ;;
+esac
+
