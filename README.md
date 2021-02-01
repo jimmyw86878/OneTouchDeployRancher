@@ -21,7 +21,7 @@ To download Rancher images, according to [offical website](https://rancher.com/d
 ```
 cd scripts
 
-./rancher-save-images.sh --image-list ../images/rancher-images.txt
+sudo bash rancher-save-images.sh --image-list ../images/rancher-images.txt
 ```
 Then, it will generated `rancher-images.tar.gz` on the same directory.
 
