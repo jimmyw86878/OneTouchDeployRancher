@@ -23,7 +23,7 @@ cd scripts
 
 sudo bash rancher-save-images.sh --image-list ../images/rancher-images.txt
 ```
-Then, it will generated `rancher-images.tar.gz` on the same directory.
+Then, it will generate `rancher-images.tar.gz` on the same directory.
 
 PS. `rancher-save-images.sh` is already in `scripts` folder.
 
@@ -42,7 +42,7 @@ Clone this repository and make sure you have `rancher-images.tar.gz` and `regist
 
 There are two steps to deploy Rancher and K8S :
 
-Below steps should be done as a `root`. So we switch to `root` account first (The Command may be different from other OS):
+Below steps should be done as a `root`. So we switch to `root` account first (The command may be different from other OS):
 ```
 sudo su
 ```
@@ -53,9 +53,9 @@ cd scripts
 
 sudo bash deploy --master-ip $(your_master_ip) -- deploy-registry
 ```
-It will bring a registry named `registry` that contains all Rancher images and is Listening on 5000 port.
+It will bring a registry named `registry` that contains all Rancher images and is listening on 5000 port.
 
-PS. Deploying registry may take serveral minutes to complete.
+PS. Deploying registry may take several minutes to complete.
 
 PS. After registry is deployed successfully, it is ok to ignore error message like: "No such image: XXX" or "image is being used ..." since the loaded Rancher images are deleted automatically.
 
@@ -66,7 +66,7 @@ cd scripts
 sudo bash deploy --master-ip $(your_master_ip) --cluster-name $(your_cluster_name) --cni $(your_cni_plugin) -- deploy-master
 ```
 
-This may take few minutes to complete.
+This may take a few minutes to complete.
 
 After the deployment is done, you can login Rancher by: "https://$(your_master_ip):8443". Default password is `123456`. You can check whether the cluster is normal or not by UI or using `kubectl` command:
 ```
@@ -84,7 +84,7 @@ cd scripts
 sudo bash deploy -- worker-command
 ```
 
-Then you can copy the output which is docker command to worker node and start to deploy. You can login Rancher UI to check progress of deploying worker node.
+Then you can copy the output which is docker command to worker node and start to deploy. You can login Rancher UI to check progress of deploying the worker node.
 
 ### Remove Rancher and K8S cluster
 
@@ -101,4 +101,4 @@ cd scripts
 
 sudo bash clean.sh registry-flush
 ```
-If you want to clear worker node, you can also refer to [here](https://www.rancher.co.jp/docs/rke/latest/en/managing-clusters/)
+If you want to clear Rancher from the worker node, you can also refer to [here](https://www.rancher.co.jp/docs/rke/latest/en/managing-clusters/)
