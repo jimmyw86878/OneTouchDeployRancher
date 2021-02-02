@@ -17,7 +17,7 @@ else
 fi
 docker rmi -f $(docker images -q)
 for mount in $(mount | egrep '/var/lib/kubelet(.*)type (tmpfs|ceph)' | awk '{ print $3 }') /var/lib/kubelet /var/lib/rancher; do umount $mount; done
-cleanupdirs="/etc/ceph /etc/cni /etc/kubernetes /opt/cni /opt/rke /run/secrets/kubernetes.io /run/calico /run/flannel /var/lib/calico /var/lib/etcd /var/lib/cni /var/lib/kubelet /var/lib/rancher/rke/log /var/log/containers /var/log/pods /var/run/calico"
+cleanupdirs="/etc/ceph /etc/cni /etc/kubernetes /opt/cni /opt/rke /run/secrets/kubernetes.io /run/calico /run/flannel /var/lib/calico /var/lib/etcd /var/lib/cni /var/lib/kubelet /var/lib/rancher/rke/log /var/log/containers /var/log/pods /var/run/calico /var/lib/weave /opt/rke-tools"
 for dir in $cleanupdirs; do
   echo "Removing $dir"
   rm -rf $dir
