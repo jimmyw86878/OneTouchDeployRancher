@@ -175,7 +175,7 @@ case "$1" in
         docker load -i ../images/registry2.7.tar
         docker run -d -p $registry_port:5000 --restart=always --name registry registry:2.7
         echo "Load rancher images and push into registry"
-        ./rancher-load-images.sh --image-list ../images/rancher-images.txt --images ../images/rancher-images.tar.gz  --registry $registry
+        sudo bash rancher-load-images.sh --image-list ../images/rancher-images.txt --images ../images/rancher-images.tar.gz  --registry $registry
         echo "Delete loaded images, ignore error if image is in used"
         set +e
         docker rmi -f $(docker images -q)

@@ -27,7 +27,7 @@ Then, it will generated `rancher-images.tar.gz` on the same directory.
 
 PS. `rancher-save-images.sh` is already in `scripts` folder.
 
-PS. `rancher-images.txt` is already in `images` folder. To be noticed, this `rancher-images.txt` is main for K8S version `v1.19.6` and Rancher `v2.5.5`, available for 4 cni plugins: `flannel`, `canal`,`calico` and `weave`.
+PS. `rancher-images.txt` is already in `images` folder. To be noticed, this `rancher-images.txt` is main for K8S version `v1.19.6` and Rancher `v2.5.5`, available for 4 cni plugins: `flannel`, `canal`,`calico` and `weave`. Make sure this `rancher-images.txt` is used in above command.
 
 To download registry image, you can refer to [docker hub](https://hub.docker.com/_/registry) for 2.7 tag.
 ```
@@ -84,7 +84,7 @@ cd scripts
 sudo bash deploy -- worker-command
 ```
 
-Then you can copy the output which is docker command to worker node and start to deploy.
+Then you can copy the output which is docker command to worker node and start to deploy. You can login Rancher UI to check progress of deploying worker node.
 
 ### Remove Rancher and K8S cluster
 
