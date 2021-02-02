@@ -91,8 +91,21 @@ case "$1" in
         rm -f cluster_id
         rm -f worker_command
         rm -f ~/.kube/config
+        rm -f cluster.json
         docker run -d --restart=unless-stopped  --privileged  -p 8080:80 -p $rancher_server_port:443 "$registry"/rancher/rancher:"$rancher_version"
-        while ! curl -s -k https://$rancher_server/; do echo "Waiting for Rancher server ready...";sleep 10; done
+        for i in {1..30};
+        do 
+            if curl -s -k https://$rancher_server/; then
+                echo "Rancher server is ready!"
+                break
+            fi
+            if (( $i > 29 )); then
+                echo -e "\n${COLOR_RED}Failed to deploy Rancher server, please check logs of Rancher server.${COLOR_REST}"
+                exit 1
+            fi
+            echo "Waiting for Rancher server ready..."
+            sleep 10
+        done
         LOGINRESPONSE=`curl -s 'https://'$rancher_server'/v3-public/localProviders/local?action=login' -H 'content-type: application/json' --data-binary '{"username":"admin","password":"admin"}' --insecure`
         LOGINTOKEN=`echo $LOGINRESPONSE | jq -r .token`
         # Change password
@@ -108,6 +121,7 @@ case "$1" in
         echo "sleep 10 seconds for booting up Rancher"
         sleep 10
         # Create cluster information
+        cp ../template/cluster.json ./
         jq --arg a "$cluster_name" '.name = $a' cluster.json > "tmp" && mv "tmp" cluster.json
         jq --arg a "$registry" '.rancherKubernetesEngineConfig.privateRegistries[0].url = $a' cluster.json > "tmp" && mv "tmp" cluster.json
         jq --arg a "$cni" '.rancherKubernetesEngineConfig.network.plugin = $a' cluster.json > "tmp" && mv "tmp" cluster.json

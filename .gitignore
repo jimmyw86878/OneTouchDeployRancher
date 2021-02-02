@@ -3,3 +3,4 @@
 /scripts/cluster_id
 /scripts/token
 /scripts/worker_command
+/scripts/cluster.json
