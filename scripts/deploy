@@ -13,8 +13,8 @@ rancher_server="$master_ip:$rancher_server_port"
 rancher_admin_password="123456"
 declare -a cni_list=("flannel" "canal" "calico" "weave")
 COLOR_REST='\e[0m'
-COLOR_GREEN='\e[0;32m';
-COLOR_RED='\e[0;31m';
+COLOR_GREEN='\e[0;32m'
+COLOR_RED='\e[0;31m'
 
 check_cni_list()
 {
@@ -185,6 +185,19 @@ case "$1" in
         done
         ;;
 (deploy-registry)
+        echo "Config docker daemon.json"
+        if [ ! -f /etc/docker/daemon.json ]; then
+            jq '."insecure-registries" += ["'$registry'"]' ../template/daemon.json > "tmp" && mv "tmp" daemon.json
+            cp -f daemon.json /etc/docker/
+        else
+            existregistry=`cat /etc/docker/daemon.json | grep $registry`
+            if [[ -z "$existregistry" ]]; then
+                jq '."insecure-registries" += ["'$registry'"]' /etc/docker/daemon.json > "tmp" && mv "tmp" daemon.json
+                cp -f daemon.json /etc/docker/
+            fi
+        fi
+        systemctl daemon-reload
+        systemctl restart docker
         echo "Deploy registry"
         docker load -i ../images/registry2.7.tar
         docker run -d -p $registry_port:5000 --restart=always --name registry registry:2.7

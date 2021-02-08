@@ -4,3 +4,4 @@
 /scripts/token
 /scripts/worker_command
 /scripts/cluster.json
+/scripts/daemon.json

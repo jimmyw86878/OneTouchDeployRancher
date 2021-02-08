@@ -5,7 +5,7 @@
     "enableNetworkPolicy": false,
     "windowsPreferedCluster": false,
     "type": "cluster",
-    "name": "jimmy66666",
+    "name": "k8s-demo",
     "rancherKubernetesEngineConfig": {
       "addonJobTimeout": 45,
       "ignoreDockerVersion": true,
@@ -28,7 +28,7 @@
       },
       "network": {
         "mtu": 0,
-        "plugin": "weave",
+        "plugin": "flannel",
         "type": "networkConfig",
         "options": {
           "flannel_backend_type": "vxlan"
@@ -96,7 +96,7 @@
         {
           "isDefault": true,
           "type": "privateRegistry",
-          "url": "10.60.6.244:5000"
+          "url": "localhost:5000"
         }
       ]
     },
