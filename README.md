@@ -68,7 +68,7 @@ sudo bash deploy --master-ip $(your_master_ip) --cluster-name $(your_cluster_nam
 
 This may take a few minutes to complete.
 
-After the deployment is done, you can login Rancher by: "https://$(your_master_ip):8443". Default password is `123456`. You can check whether the cluster is normal or not by UI or using `kubectl` command:
+After the deployment is done, you can login Rancher by: "https://$(your_master_ip):8443". Default account is admin. Default password is `123456`. You can check whether the cluster is normal or not by UI or using `kubectl` command:
 ```
 kubectl cluster-info
 
@@ -88,7 +88,7 @@ Then you can copy the output which is docker command to worker node and start to
 
 ### Remove Rancher and K8S cluster
 
-Execute below command to remove all the components in master node:
+Execute below command to remove all the components in master node and worker node:
 ```
 cd scripts
 
@@ -101,4 +101,4 @@ cd scripts
 
 sudo bash clean.sh registry-flush
 ```
-If you want to clear Rancher from the worker node, you can also refer to [here](https://www.rancher.co.jp/docs/rke/latest/en/managing-clusters/)
+You can also refer to [here](https://www.rancher.co.jp/docs/rke/latest/en/managing-clusters/).
